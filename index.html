@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ExCheck - Review người yêu cũ có kiểm chứng</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="container hero__content">
+        <span class="badge">Beta • Cộng đồng xác thực</span>
+        <h1>ExCheck — Tra cứu lịch sử tình trường minh bạch</h1>
+        <p>
+          Nền tảng giúp bạn tìm kiếm và chia sẻ trải nghiệm mối quan hệ cũ theo cách có
+          <strong>bằng chứng</strong>, tôn trọng và có trách nhiệm.
+        </p>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="#submit">Thêm hồ sơ mới</a>
+          <a class="btn btn--ghost" href="#auth-check">Check auth tài khoản</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container grid-layout">
+      <section class="card" id="submit">
+        <h2>Thêm review người yêu cũ</h2>
+        <p class="helper-text">
+          Lưu ý: Hệ thống yêu cầu bằng chứng đã từng quen nhau. Với review tiêu cực, bạn cần
+          mô tả rõ sự việc và nộp bằng chứng cụ thể.
+        </p>
+
+        <form id="reviewForm" novalidate>
+          <div class="form-grid">
+            <label>
+              Tên/Nickname người được review
+              <input required name="name" maxlength="60" placeholder="VD: Minh A" />
+            </label>
+
+            <label>
+              Khu vực
+              <input required name="location" maxlength="80" placeholder="VD: TP.HCM" />
+            </label>
+
+            <label>
+              Năm bắt đầu quen
+              <input required name="startYear" type="number" min="1990" max="2100" />
+            </label>
+
+            <label>
+              Năm kết thúc
+              <input required name="endYear" type="number" min="1990" max="2100" />
+            </label>
+
+            <label>
+              Mức đánh giá
+              <select required name="sentiment" id="sentimentSelect">
+                <option value="">-- Chọn mức đánh giá --</option>
+                <option value="positive">Tích cực</option>
+                <option value="neutral">Trung lập</option>
+                <option value="negative">Tiêu cực</option>
+              </select>
+            </label>
+
+            <label>
+              Điểm tổng quan (1-5)
+              <input required name="score" type="number" min="1" max="5" />
+            </label>
+          </div>
+
+          <label>
+            Bằng chứng từng quen nhau
+            <textarea
+              required
+              name="proof"
+              rows="3"
+              placeholder="Mô tả bằng chứng: ảnh chụp kỷ niệm, vé xem phim, đoạn chat có mốc thời gian..."
+            ></textarea>
+          </label>
+
+          <label>
+            Link bằng chứng (Drive/Imgur/...)
+            <input required name="proofUrl" type="url" placeholder="https://..." />
+          </label>
+
+          <label>
+            Nội dung review
+            <textarea
+              required
+              name="review"
+              rows="4"
+              placeholder="Mô tả trải nghiệm một cách khách quan và không xúc phạm cá nhân"
+            ></textarea>
+          </label>
+
+          <label id="negativeEvidenceWrap" class="hidden">
+            Bằng chứng bổ sung cho review tiêu cực
+            <textarea
+              name="negativeEvidence"
+              rows="3"
+              placeholder="Nêu tình huống, thời điểm, bằng chứng liên quan để đảm bảo minh bạch"
+            ></textarea>
+          </label>
+
+          <label class="checkbox-line">
+            <input required type="checkbox" name="confirm" />
+            Tôi xác nhận thông tin là trung thực, có thể chịu trách nhiệm nếu cung cấp sai sự thật.
+          </label>
+
+          <button class="btn btn--primary" type="submit">Đăng review</button>
+          <p id="formMessage" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <aside class="card card--sticky" id="search">
+        <h2>Tìm kiếm & lọc review</h2>
+        <div class="search-box">
+          <input id="searchInput" placeholder="Tìm theo tên hoặc khu vực..." />
+          <select id="filterSentiment">
+            <option value="all">Tất cả đánh giá</option>
+            <option value="positive">Tích cực</option>
+            <option value="neutral">Trung lập</option>
+            <option value="negative">Tiêu cực</option>
+          </select>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <ul id="reviewList" class="review-list"></ul>
+      </aside>
+    </main>
+
+    <section class="container auth-layout" id="auth-check">
+      <section class="card">
+        <h2>Check Auth FB/Instagram (Real hay Fake)</h2>
+        <p class="helper-text">
+          Dành cho trường hợp một người dùng nhiều nick để lừa người khác. Hãy báo cáo có trách nhiệm,
+          chỉ đưa thông tin có thể kiểm chứng.
+        </p>
+
+        <form id="authForm" novalidate>
+          <div class="form-grid">
+            <label>
+              Nền tảng
+              <select required name="platform">
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+              </select>
+            </label>
+
+            <label>
+              Tên hiển thị (nếu có)
+              <input name="displayName" maxlength="80" placeholder="VD: Huy Nguyen" />
+            </label>
+          </div>
+
+          <label>
+            Link profile cần check
+            <input
+              required
+              name="profileUrl"
+              type="url"
+              placeholder="https://facebook.com/... hoặc https://instagram.com/..."
+            />
+          </label>
+
+          <div class="form-grid">
+            <label>
+              Kết luận của bạn
+              <select required name="verdict">
+                <option value="real">Nick real</option>
+                <option value="fake">Nick fake</option>
+                <option value="unclear">Chưa đủ dữ liệu</option>
+              </select>
+            </label>
+
+            <label>
+              Độ tin cậy (1-5)
+              <input required name="confidence" type="number" min="1" max="5" value="3" />
+            </label>
+          </div>
+
+          <label>
+            Lý do/bối cảnh
+            <textarea
+              required
+              name="reason"
+              rows="3"
+              placeholder="Giải thích tại sao bạn nhận định tài khoản này real/fake"
+            ></textarea>
+          </label>
+
+          <label>
+            Link bằng chứng liên quan
+            <input required type="url" name="evidenceUrl" placeholder="https://..." />
+          </label>
+
+          <label class="checkbox-line">
+            <input required type="checkbox" name="authConfirm" />
+            Tôi xác nhận báo cáo này dựa trên thông tin thật, không vu khống hoặc bôi nhọ.
+          </label>
+
+          <button class="btn btn--primary" type="submit">Gửi báo cáo Auth</button>
+          <p id="authMessage" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <aside class="card">
+        <h2>Tra cứu nick real/fake</h2>
+        <div class="search-box">
+          <input id="authSearchInput" placeholder="Dán link FB/Instagram để tra cứu..." />
+          <select id="authFilterVerdict">
+            <option value="all">Tất cả kết luận</option>
+            <option value="real">Nick real</option>
+            <option value="fake">Nick fake</option>
+            <option value="unclear">Chưa rõ</option>
+          </select>
+        </div>
+
+        <div id="authSummary" class="auth-summary empty">Chưa nhập link để tra cứu.</div>
+        <ul id="authReportList" class="review-list"></ul>
+      </aside>
+    </section>
+
+    <template id="reviewItemTemplate">
+      <li class="review-item">
+        <div class="review-head">
+          <h3 class="review-name"></h3>
+          <span class="pill review-sentiment"></span>
+        </div>
+        <p class="review-meta"></p>
+        <p class="review-score"></p>
+        <p class="review-body"></p>
+        <details>
+          <summary>Xem bằng chứng</summary>
+          <p class="review-proof"></p>
+          <a class="review-proof-url" target="_blank" rel="noopener noreferrer">Mở liên kết bằng chứng</a>
+          <p class="review-negative hidden"></p>
+        </details>
+      </li>
+    </template>
+
+    <template id="authItemTemplate">
+      <li class="review-item">
+        <div class="review-head">
+          <h3 class="auth-platform"></h3>
+          <span class="pill auth-verdict"></span>
+        </div>
+        <p class="review-meta auth-display-name"></p>
+        <p class="review-score auth-confidence"></p>
+        <p class="review-body auth-reason"></p>
+        <p class="review-meta auth-votes"></p>
+        <div class="vote-actions">
+          <button class="btn btn--ghost auth-upvote" type="button">👍 Upvote</button>
+          <button class="btn btn--ghost auth-downvote" type="button">👎 Downvote</button>
+        </div>
+        <a class="review-proof-url auth-evidence" target="_blank" rel="noopener noreferrer"
+          >Mở link bằng chứng</a
+        >
+      </li>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
