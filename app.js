@@ -450,7 +450,11 @@ authForm.addEventListener("submit", async (e) => {
   if (supabaseClient) {
     const { error } = await supabaseClient.from("auth_reports").insert(report);
     if (error) {
-      showMessage(authMessage, `Gửi auth report thất bại: ${error.message}`, "error");
+      if (error.code === "23505") {
+        showMessage(authMessage, "Báo cáo tương tự đã tồn tại. Vui lòng tránh gửi trùng lặp.", "error");
+      } else {
+        showMessage(authMessage, `Gửi auth report thất bại: ${error.message}`, "error");
+      }
       return;
     }
 

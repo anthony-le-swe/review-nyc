@@ -18,6 +18,17 @@
 - Gửi auth-report cho link FB/Instagram (real/fake/chưa rõ).
 - Tra cứu theo link profile + upvote/downvote từng báo cáo.
 
+
+## Quy tắc chống trùng auth-report
+
+Để hạn chế spam, hệ thống chặn submit trùng theo từng ngày:
+
+- Chuẩn hoá `profile_url` thành `normalized_profile_url`.
+- Tạo `reason_hash = md5(reason)` để so khớp nội dung lý do.
+- Không cho tạo thêm report nếu **cùng `normalized_profile_url` + `verdict` + `reason_hash` trong cùng ngày**.
+
+Khi bị trùng, frontend sẽ hiện thông báo thân thiện: **"Báo cáo tương tự đã tồn tại"**.
+
 ## Cấu hình Supabase
 
 ### 1) Tạo bảng

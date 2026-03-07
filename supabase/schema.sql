@@ -24,10 +24,12 @@ create table if not exists auth_reports (
   verdict text not null check (verdict in ('real', 'fake', 'unclear')),
   confidence int not null check (confidence between 1 and 5),
   reason text not null,
+  reason_hash text generated always as (md5(reason)) stored,
   evidence_url text not null,
   upvotes int not null default 0,
   downvotes int not null default 0,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  created_day date generated always as (created_at::date) stored
 );
 
 alter table reviews enable row level security;
@@ -48,3 +50,15 @@ create policy "public can insert auth reports" on auth_reports for insert with c
 
 drop policy if exists "public can update auth reports" on auth_reports;
 create policy "public can update auth reports" on auth_reports for update using (true) with check (true);
+
+
+-- Backward-compatible migrations for existing deployments.
+alter table if exists auth_reports
+  add column if not exists reason_hash text generated always as (md5(reason)) stored;
+
+alter table if exists auth_reports
+  add column if not exists created_day date generated always as (created_at::date) stored;
+
+-- Chặn báo cáo trùng quá dày: cùng profile + verdict + nội dung lý do trong cùng một ngày.
+create unique index if not exists auth_reports_unique_daily_report
+  on auth_reports (normalized_profile_url, verdict, reason_hash, created_day);
