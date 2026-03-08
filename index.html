@@ -25,10 +25,21 @@
       </div>
     </header>
 
-    <main class="container two-col">
-      <section class="card">
-        <h2>1) Match Checker</h2>
-        <p class="muted">Nhập handle (username/email/định danh) để xem tình trạng công khai.</p>
+    <main class="container grid-layout">
+      <section class="card" id="submit">
+        <h2>Gửi lời mời xác nhận mối quan hệ</h2>
+        <p class="helper-text">
+          Lưu ý: Review chỉ được đăng công khai sau khi đối phương xác nhận mã one-time.
+          Với review tiêu cực, bạn cần mô tả rõ sự việc và nộp bằng chứng cụ thể.
+        </p>
+        <p id="backendStatus" class="backend-status"></p>
+
+        <form id="reviewForm" novalidate>
+          <div class="form-grid">
+            <label>
+              Tên/Nickname người được review
+              <input required name="name" maxlength="60" placeholder="VD: Minh A" />
+            </label>
 
         <form id="checkForm" class="stack" novalidate>
           <label>
@@ -39,7 +50,25 @@
           <p id="checkMessage" class="message"></p>
         </form>
 
-        <div id="checkSummary" class="summary empty">Chưa có dữ liệu tra cứu.</div>
+            <label>
+              Mã người gửi (nickname/email ẩn danh)
+              <input required name="claimerUserId" maxlength="120" placeholder="VD: user_abc123" />
+            </label>
+
+            <label>
+              Contact hash của đối phương
+              <input
+                required
+                name="claimedPartnerContactHash"
+                maxlength="160"
+                placeholder="VD: sha256(email/sđt/DM)"
+              />
+            </label>
+
+            <label>
+              Năm bắt đầu quen
+              <input required name="startYear" type="number" min="1990" max="2100" />
+            </label>
 
         <h3>Cặp đôi đã xác thực</h3>
         <ul id="relationshipList" class="list"></ul>
@@ -79,13 +108,77 @@
             Mã claim
             <input name="claimCode" required maxlength="16" placeholder="VD: LP-8H29KQ" />
           </label>
-          <label>
-            Handle của bạn (người được mời)
-            <input name="partnerHandle" required maxlength="80" placeholder="VD: @minh.nguyen" />
-          </label>
-          <button class="btn btn--ghost" type="submit">Xác nhận mối quan hệ</button>
-          <p id="confirmMessage" class="message"></p>
+
+          <button class="btn btn--primary" type="submit">Gửi lời mời xác nhận</button>
+          <p id="formMessage" class="form-message" role="status" aria-live="polite"></p>
         </form>
+      </section>
+
+      <section class="card" id="confirm-claim">
+        <h2>Xác nhận lời mời bằng mã one-time</h2>
+        <p class="helper-text">
+          Người nhận lời mời nhập mã claim + mã xác nhận để mở khóa review hiển thị công khai.
+        </p>
+
+        <form id="claimConfirmForm" novalidate>
+          <div class="form-grid">
+            <label>
+              Claim ID
+              <input required name="claimId" placeholder="UUID claim" />
+            </label>
+
+            <label>
+              Mã xác nhận one-time
+              <input required name="verificationCode" placeholder="VD: 123456" maxlength="6" />
+            </label>
+          </div>
+
+          <button class="btn btn--primary" type="submit">Xác nhận lời mời</button>
+          <p id="claimConfirmMessage" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <aside class="card card--sticky" id="search">
+        <h2>Tìm kiếm & lọc review</h2>
+        <div class="search-box">
+          <input id="searchInput" placeholder="Tìm theo tên hoặc khu vực..." />
+          <select id="filterSentiment">
+            <option value="all">Tất cả đánh giá</option>
+            <option value="positive">Tích cực</option>
+            <option value="neutral">Trung lập</option>
+            <option value="negative">Tiêu cực</option>
+          </select>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <ul id="reviewList" class="review-list"></ul>
+      </aside>
+    </main>
+
+    <section class="container auth-layout" id="auth-check">
+      <section class="card">
+        <h2>Check Auth FB/Instagram (Real hay Fake)</h2>
+        <p class="helper-text">
+          Dành cho trường hợp một người dùng nhiều nick để lừa người khác. Hãy báo cáo có trách nhiệm,
+          chỉ đưa thông tin có thể kiểm chứng.
+        </p>
+
+        <form id="authForm" novalidate>
+          <div class="form-grid">
+            <label>
+              Nền tảng
+              <select required name="platform">
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+              </select>
+            </label>
+
+            <label>
+              Tên hiển thị (nếu có)
+              <input name="displayName" maxlength="80" placeholder="VD: Huy Nguyen" />
+            </label>
+          </div>
 
         <form id="flagForm" class="stack" novalidate>
           <h3>Gửi community flag</h3>
