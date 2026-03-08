@@ -30,10 +30,10 @@
 
     <main class="container grid-layout">
       <section class="card" id="submit">
-        <h2>Thêm review người yêu cũ</h2>
+        <h2>Gửi lời mời xác nhận mối quan hệ</h2>
         <p class="helper-text">
-          Lưu ý: Hệ thống yêu cầu bằng chứng đã từng quen nhau. Với review tiêu cực, bạn cần
-          mô tả rõ sự việc và nộp bằng chứng cụ thể.
+          Lưu ý: Review chỉ được đăng công khai sau khi đối phương xác nhận mã one-time.
+          Với review tiêu cực, bạn cần mô tả rõ sự việc và nộp bằng chứng cụ thể.
         </p>
         <p id="backendStatus" class="backend-status"></p>
 
@@ -47,6 +47,21 @@
             <label>
               Khu vực
               <input required name="location" maxlength="80" placeholder="VD: TP.HCM" />
+            </label>
+
+            <label>
+              Mã người gửi (nickname/email ẩn danh)
+              <input required name="claimerUserId" maxlength="120" placeholder="VD: user_abc123" />
+            </label>
+
+            <label>
+              Contact hash của đối phương
+              <input
+                required
+                name="claimedPartnerContactHash"
+                maxlength="160"
+                placeholder="VD: sha256(email/sđt/DM)"
+              />
             </label>
 
             <label>
@@ -114,8 +129,32 @@
             Tôi xác nhận thông tin là trung thực, có thể chịu trách nhiệm nếu cung cấp sai sự thật.
           </label>
 
-          <button class="btn btn--primary" type="submit">Đăng review</button>
+          <button class="btn btn--primary" type="submit">Gửi lời mời xác nhận</button>
           <p id="formMessage" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="card" id="confirm-claim">
+        <h2>Xác nhận lời mời bằng mã one-time</h2>
+        <p class="helper-text">
+          Người nhận lời mời nhập mã claim + mã xác nhận để mở khóa review hiển thị công khai.
+        </p>
+
+        <form id="claimConfirmForm" novalidate>
+          <div class="form-grid">
+            <label>
+              Claim ID
+              <input required name="claimId" placeholder="UUID claim" />
+            </label>
+
+            <label>
+              Mã xác nhận one-time
+              <input required name="verificationCode" placeholder="VD: 123456" maxlength="6" />
+            </label>
+          </div>
+
+          <button class="btn btn--primary" type="submit">Xác nhận lời mời</button>
+          <p id="claimConfirmMessage" class="form-message" role="status" aria-live="polite"></p>
         </form>
       </section>
 
