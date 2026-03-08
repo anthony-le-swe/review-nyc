@@ -6,33 +6,24 @@ const CLAIM_TTL_HOURS = 48;
 const sampleData = [
   {
     id: crypto.randomUUID(),
-    name: "N.Q. Anh",
-    location: "Hà Nội",
-    startYear: 2020,
-    endYear: 2022,
-    sentiment: "neutral",
-    score: 3,
-    proof: "Ảnh check-in có timestamp + đoạn chat xác nhận kỷ niệm 1 năm.",
-    proofUrl: "https://example.com/proof/anh",
-    review: "Giao tiếp ban đầu ổn nhưng dần ít chia sẻ. Không có xung đột lớn.",
-    negativeEvidence: "",
+    claimCode: "LP-DEMO12",
+    claimerHandle: "@linh.tran",
+    partnerHandle: "@minh.nguyen",
+    relationshipKey: "@linh.tran|@minh.nguyen",
+    status: "verified",
+    proofUrl: "https://example.com/proof/couple",
     createdAt: new Date().toISOString(),
+    verifiedAt: new Date().toISOString(),
   },
 ];
 
-const sampleAuthReports = [
+const sampleFlags = [
   {
     id: crypto.randomUUID(),
-    platform: "facebook",
-    displayName: "M.Khang",
-    profileUrl: "https://facebook.com/khang.profile",
-    normalizedProfileUrl: "https://facebook.com/khang.profile",
-    verdict: "real",
-    confidence: 4,
-    reason: "Có tương tác lâu năm với bạn bè thật, ảnh cá nhân nhất quán theo thời gian.",
-    evidenceUrl: "https://example.com/evidence/khang",
-    upvotes: 3,
-    downvotes: 0,
+    targetHandle: "@minh.nguyen",
+    category: "taken-claim",
+    detail: "Đã xác thực trong mối quan hệ công khai trên nền tảng.",
+    evidenceUrl: "https://example.com/flag/proof",
     createdAt: new Date().toISOString(),
   },
 ];
@@ -68,54 +59,28 @@ let reviews = [...sampleData];
 let authReports = [...sampleAuthReports];
 let localClaims = [];
 
+function normalizeHandle(raw) {
+  return raw.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function pairKey(a, b) {
+  return [normalizeHandle(a), normalizeHandle(b)].sort().join("|");
+}
+
+function createClaimCode() {
+  return `LP-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+function showMessage(node, text, type = "success") {
+  node.textContent = text;
+  node.classList.remove("message--error", "message--success");
+  node.classList.add(type === "error" ? "message--error" : "message--success");
+}
+
 function showBackendStatus() {
-  if (supabaseClient) {
-    backendStatus.textContent = "Đang dùng Supabase (database online).";
-    backendStatus.classList.remove("pill--negative");
-    backendStatus.classList.add("pill", "pill--positive");
-    return;
-  }
-
-  backendStatus.textContent =
-    "Chưa cấu hình Supabase URL/ANON KEY, đang chạy tạm dữ liệu demo local.";
-  backendStatus.classList.remove("pill--positive");
-  backendStatus.classList.add("pill", "pill--negative");
-}
-
-function sentimentLabel(sentiment) {
-  return {
-    positive: "Tích cực",
-    neutral: "Trung lập",
-    negative: "Tiêu cực",
-  }[sentiment];
-}
-
-function verdictLabel(verdict) {
-  return {
-    real: "Nick real",
-    fake: "Nick fake",
-    unclear: "Chưa rõ",
-  }[verdict];
-}
-
-function platformLabel(platform) {
-  return platform === "facebook" ? "Facebook" : "Instagram";
-}
-
-function sentimentClass(sentiment) {
-  return `pill--${sentiment}`;
-}
-
-function normalizeProfileUrl(rawUrl) {
-  try {
-    const url = new URL(rawUrl.trim());
-    const host = url.hostname.replace("www.", "").toLowerCase();
-    const path = url.pathname.replace(/\/$/, "");
-
-    return `${url.protocol}//${host}${path}`.toLowerCase();
-  } catch {
-    return "";
-  }
+  backendStatus.textContent = supabaseClient
+    ? "Đang chạy Supabase online"
+    : "Đang chạy local demo (chưa cấu hình Supabase)";
 }
 
 function hashText(text) {
@@ -142,50 +107,40 @@ function generateVerificationCode() {
 function mapReviewRow(row) {
   return {
     id: row.id,
-    name: row.name,
-    location: row.location,
-    startYear: row.start_year,
-    endYear: row.end_year,
-    sentiment: row.sentiment,
-    score: row.score,
-    proof: row.proof,
+    claimCode: row.claim_code,
+    claimerHandle: row.claimer_handle,
+    partnerHandle: row.partner_handle,
+    relationshipKey: row.relationship_key,
+    status: row.status,
     proofUrl: row.proof_url,
-    review: row.review,
-    negativeEvidence: row.negative_evidence || "",
     createdAt: row.created_at,
+    verifiedAt: row.verified_at,
   };
 }
 
-function mapAuthRow(row) {
+function mapFlagRow(row) {
   return {
     id: row.id,
-    platform: row.platform,
-    displayName: row.display_name || "",
-    profileUrl: row.profile_url,
-    normalizedProfileUrl: row.normalized_profile_url,
-    verdict: row.verdict,
-    confidence: row.confidence,
-    reason: row.reason,
+    targetHandle: row.target_handle,
+    category: row.category,
+    detail: row.detail,
     evidenceUrl: row.evidence_url,
-    upvotes: row.upvotes,
-    downvotes: row.downvotes,
     createdAt: row.created_at,
   };
 }
 
-async function fetchReviews() {
+async function fetchClaims() {
   if (!supabaseClient) return;
   const { data, error } = await supabaseClient
-    .from("reviews")
+    .from("relationship_claims")
     .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
-    showMessage(formMessage, `Không tải được reviews: ${error.message}`, "error");
+    showMessage(checkMessage, `Không tải được claims: ${error.message}`, "error");
     return;
   }
-
-  reviews = data.map(mapReviewRow);
+  claims = data.map(mapClaimRow);
 }
 
 async function expireStaleClaims() {
@@ -320,225 +275,206 @@ async function confirmRelationshipClaim(claimId, verificationCode) {
 async function fetchAuthReports() {
   if (!supabaseClient) return;
   const { data, error } = await supabaseClient
-    .from("auth_reports")
+    .from("community_flags")
     .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
-    showMessage(authMessage, `Không tải được auth reports: ${error.message}`, "error");
+    showMessage(checkMessage, `Không tải được flags: ${error.message}`, "error");
     return;
   }
-
-  authReports = data.map(mapAuthRow);
+  flags = data.map(mapFlagRow);
 }
 
-function renderStats(currentList) {
-  const total = currentList.length;
-  const positive = currentList.filter((item) => item.sentiment === "positive").length;
-  const neutral = currentList.filter((item) => item.sentiment === "neutral").length;
-  const negative = currentList.filter((item) => item.sentiment === "negative").length;
+function renderCheck(handleRaw) {
+  const handle = normalizeHandle(handleRaw);
+  relationshipList.innerHTML = "";
+  flagList.innerHTML = "";
 
-  stats.innerHTML = `
-    <span>Tổng: <strong>${total}</strong></span>
-    <span>Tích cực: <strong>${positive}</strong></span>
-    <span>Trung lập: <strong>${neutral}</strong></span>
-    <span>Tiêu cực: <strong>${negative}</strong></span>
-  `;
-}
-
-function renderList() {
-  const q = searchInput.value.trim().toLowerCase();
-  const sentimentFilter = filterSentiment.value;
-
-  const filtered = reviews
-    .filter((item) => {
-      const matchKeyword =
-        item.name.toLowerCase().includes(q) || item.location.toLowerCase().includes(q);
-      const matchSentiment = sentimentFilter === "all" || item.sentiment === sentimentFilter;
-      return matchKeyword && matchSentiment;
-    })
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  reviewList.innerHTML = "";
-  if (!filtered.length) {
-    reviewList.innerHTML = "<li>Chưa có kết quả phù hợp.</li>";
-    renderStats(filtered);
+  if (!handle) {
+    checkSummary.textContent = "Chưa có dữ liệu tra cứu.";
+    checkSummary.classList.add("empty");
     return;
   }
 
-  for (const item of filtered) {
-    const node = reviewItemTemplate.content.cloneNode(true);
-    node.querySelector(".review-name").textContent = item.name;
+  const relationshipMatches = claims.filter(
+    (item) =>
+      item.status === "verified" &&
+      (normalizeHandle(item.claimerHandle) === handle || normalizeHandle(item.partnerHandle) === handle)
+  );
 
-    const sentimentEl = node.querySelector(".review-sentiment");
-    sentimentEl.textContent = sentimentLabel(item.sentiment);
-    sentimentEl.classList.add(sentimentClass(item.sentiment));
+  const flagMatches = flags.filter((item) => normalizeHandle(item.targetHandle) === handle);
 
-    node.querySelector(
-      ".review-meta"
-    ).textContent = `${item.location} • Quen từ ${item.startYear} đến ${item.endYear}`;
-    node.querySelector(".review-score").textContent = `Điểm tổng quan: ${item.score}/5`;
-    node.querySelector(".review-body").textContent = item.review;
-    node.querySelector(".review-proof").textContent = item.proof;
-
-    const proofUrlEl = node.querySelector(".review-proof-url");
-    proofUrlEl.href = item.proofUrl;
-
-    const negativeEvidenceEl = node.querySelector(".review-negative");
-    if (item.sentiment === "negative" && item.negativeEvidence) {
-      negativeEvidenceEl.textContent = `Bằng chứng bổ sung: ${item.negativeEvidence}`;
-      negativeEvidenceEl.classList.remove("hidden");
-    }
-
-    reviewList.appendChild(node);
+  if (!relationshipMatches.length && !flagMatches.length) {
+    checkSummary.classList.remove("empty");
+    checkSummary.textContent =
+      "Không có cờ đỏ hoặc cặp đôi verified công khai cho handle này. Không đồng nghĩa an toàn tuyệt đối.";
+  } else {
+    checkSummary.classList.remove("empty");
+    checkSummary.textContent = `Tìm thấy ${relationshipMatches.length} cặp verified và ${flagMatches.length} community flags.`;
   }
 
-  renderStats(filtered);
-}
-
-function renderAuthSummary(currentList) {
-  if (!authSearchInput.value.trim()) {
-    authSummary.classList.add("empty");
-    authSummary.textContent = "Chưa nhập link để tra cứu.";
-    return;
-  }
-
-  if (!currentList.length) {
-    authSummary.classList.remove("empty");
-    authSummary.textContent = "Chưa có báo cáo cho link này.";
-    return;
-  }
-
-  const real = currentList.filter((item) => item.verdict === "real").length;
-  const fake = currentList.filter((item) => item.verdict === "fake").length;
-  const unclear = currentList.filter((item) => item.verdict === "unclear").length;
-  const total = currentList.length;
-
-  const dominant = [
-    { label: "Nick real", count: real },
-    { label: "Nick fake", count: fake },
-    { label: "Chưa rõ", count: unclear },
-  ].sort((a, b) => b.count - a.count)[0];
-
-  authSummary.classList.remove("empty");
-  authSummary.innerHTML = `
-    <strong>Kết quả tổng hợp:</strong> ${dominant.label} (${dominant.count}/${total} báo cáo) <br>
-    Real: <strong>${real}</strong> • Fake: <strong>${fake}</strong> • Chưa rõ: <strong>${unclear}</strong>
-  `;
-}
-
-function renderAuthReports() {
-  const query = normalizeProfileUrl(authSearchInput.value);
-  const verdictFilter = authFilterVerdict.value;
-
-  let filtered = authReports;
-  if (query) {
-    filtered = filtered.filter((item) => item.normalizedProfileUrl === query);
-  }
-
-  if (verdictFilter !== "all") {
-    filtered = filtered.filter((item) => item.verdict === verdictFilter);
-  }
-
-  filtered = filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  authReportList.innerHTML = "";
-  if (!filtered.length) {
-    authReportList.innerHTML = "<li>Không có báo cáo phù hợp.</li>";
-    renderAuthSummary(filtered);
-    return;
-  }
-
-  for (const item of filtered) {
-    const node = authItemTemplate.content.cloneNode(true);
-
-    node.querySelector(".auth-platform").textContent = `${platformLabel(item.platform)} • ${item.profileUrl}`;
-
-    const verdictEl = node.querySelector(".auth-verdict");
-    verdictEl.textContent = verdictLabel(item.verdict);
-    verdictEl.classList.add(sentimentClass(item.verdict));
-
-    node.querySelector(".auth-display-name").textContent = item.displayName
-      ? `Tên hiển thị: ${item.displayName}`
-      : "Tên hiển thị: chưa cung cấp";
-
-    node.querySelector(
-      ".auth-confidence"
-    ).textContent = `Độ tin cậy người gửi: ${item.confidence}/5 • ${new Date(
-      item.createdAt
-    ).toLocaleDateString("vi-VN")}`;
-
-    node.querySelector(".auth-reason").textContent = item.reason;
-    node.querySelector(".auth-votes").textContent = `Upvote: ${item.upvotes} • Downvote: ${item.downvotes}`;
-
-    const evidenceEl = node.querySelector(".auth-evidence");
-    evidenceEl.href = item.evidenceUrl;
-
-    node.querySelector(".auth-upvote").addEventListener("click", async () => {
-      await voteReport(item, "up");
+  if (!relationshipMatches.length) {
+    relationshipList.innerHTML = "<li class='item'>Không có cặp đôi verified.</li>";
+  } else {
+    relationshipMatches.forEach((item) => {
+      const node = relationshipItemTemplate.content.cloneNode(true);
+      node.querySelector(".pair").textContent = `${item.claimerHandle} ❤ ${item.partnerHandle}`;
+      node.querySelector(".meta").textContent = `Verified: ${new Date(
+        item.verifiedAt || item.createdAt
+      ).toLocaleString("vi-VN")}`;
+      const link = node.querySelector(".link");
+      if (item.proofUrl) {
+        link.href = item.proofUrl;
+      } else {
+        link.remove();
+      }
+      relationshipList.appendChild(node);
     });
-
-    node.querySelector(".auth-downvote").addEventListener("click", async () => {
-      await voteReport(item, "down");
-    });
-
-    authReportList.appendChild(node);
   }
 
-  renderAuthSummary(filtered);
+  if (!flagMatches.length) {
+    flagList.innerHTML = "<li class='item'>Chưa có community flag.</li>";
+  } else {
+    flagMatches.forEach((item) => {
+      const node = flagItemTemplate.content.cloneNode(true);
+      node.querySelector(".cat").textContent = item.category;
+      node.querySelector(".meta").textContent = item.detail;
+      node.querySelector(".link").href = item.evidenceUrl;
+      flagList.appendChild(node);
+    });
+  }
 }
 
-function showMessage(element, text, type = "ok") {
-  element.textContent = text;
-  element.style.color = type === "ok" ? "var(--success)" : "var(--danger)";
-}
-
-async function voteReport(item, direction) {
+async function submitClaim(payload) {
   if (!supabaseClient) {
-    if (direction === "up") item.upvotes += 1;
-    else item.downvotes += 1;
-    renderAuthReports();
-    return;
+    claims.unshift(payload);
+    return { error: null };
   }
 
-  const nextUpvotes = direction === "up" ? item.upvotes + 1 : item.upvotes;
-  const nextDownvotes = direction === "down" ? item.downvotes + 1 : item.downvotes;
+  const { error } = await supabaseClient.from("relationship_claims").insert({
+    claim_code: payload.claimCode,
+    claimer_handle: payload.claimerHandle,
+    partner_handle: payload.partnerHandle,
+    relationship_key: payload.relationshipKey,
+    status: payload.status,
+    proof_url: payload.proofUrl,
+  });
+  return { error };
+}
+
+async function submitFlag(payload) {
+  if (!supabaseClient) {
+    flags.unshift(payload);
+    return { error: null };
+  }
+
+  const { error } = await supabaseClient.from("community_flags").insert({
+    target_handle: payload.targetHandle,
+    category: payload.category,
+    detail: payload.detail,
+    evidence_url: payload.evidenceUrl,
+  });
+  return { error };
+}
+
+async function confirmClaim(claimCode, partnerHandle) {
+  if (!supabaseClient) {
+    const claim = claims.find((item) => item.claimCode === claimCode);
+    if (!claim) return { error: { message: "Không tìm thấy claim" } };
+    if (normalizeHandle(claim.partnerHandle) !== normalizeHandle(partnerHandle)) {
+      return { error: { message: "Handle xác nhận không khớp với người được mời" } };
+    }
+    claim.status = "verified";
+    claim.verifiedAt = new Date().toISOString();
+    return { error: null };
+  }
+
+  const { data, error: findError } = await supabaseClient
+    .from("relationship_claims")
+    .select("id,partner_handle,status")
+    .eq("claim_code", claimCode)
+    .maybeSingle();
+
+  if (findError || !data) {
+    return { error: { message: "Không tìm thấy claim" } };
+  }
+
+  if (normalizeHandle(data.partner_handle) !== normalizeHandle(partnerHandle)) {
+    return { error: { message: "Handle xác nhận không khớp với người được mời" } };
+  }
 
   const { error } = await supabaseClient
-    .from("auth_reports")
-    .update({ upvotes: nextUpvotes, downvotes: nextDownvotes })
-    .eq("id", item.id);
-
-  if (error) {
-    showMessage(authMessage, `Vote thất bại: ${error.message}`, "error");
-    return;
-  }
-
-  await fetchAuthReports();
-  renderAuthReports();
+    .from("relationship_claims")
+    .update({ status: "verified", verified_at: new Date().toISOString() })
+    .eq("id", data.id);
+  return { error };
 }
 
-sentimentSelect.addEventListener("change", (e) => {
-  const isNegative = e.target.value === "negative";
-  negativeEvidenceWrap.classList.toggle("hidden", !isNegative);
-  negativeEvidenceWrap.querySelector("textarea").required = isNegative;
+checkForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const fd = new FormData(checkForm);
+  const handle = fd.get("handle")?.toString() || "";
+  if (!normalizeHandle(handle)) {
+    showMessage(checkMessage, "Handle không hợp lệ", "error");
+    return;
+  }
+  await fetchClaims();
+  await fetchFlags();
+  renderCheck(handle);
+  showMessage(checkMessage, "Đã cập nhật kết quả tra cứu.");
 });
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const data = new FormData(form);
+claimForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const fd = new FormData(claimForm);
+  const claimerHandle = normalizeHandle(fd.get("claimer")?.toString() || "");
+  const partnerHandle = normalizeHandle(fd.get("partner")?.toString() || "");
+  const proofUrl = fd.get("proofUrl")?.toString().trim() || "";
 
-  const startYear = Number(data.get("startYear"));
-  const endYear = Number(data.get("endYear"));
-
-  if (endYear < startYear) {
-    showMessage(formMessage, "Năm kết thúc phải lớn hơn hoặc bằng năm bắt đầu.", "error");
+  if (!claimerHandle || !partnerHandle || claimerHandle === partnerHandle) {
+    showMessage(claimMessage, "Hai handle phải hợp lệ và khác nhau.", "error");
     return;
   }
 
-  const sentiment = data.get("sentiment");
-  if (sentiment === "negative" && !String(data.get("negativeEvidence")).trim()) {
-    showMessage(formMessage, "Review tiêu cực bắt buộc có bằng chứng bổ sung.", "error");
+  const payload = {
+    id: crypto.randomUUID(),
+    claimCode: createClaimCode(),
+    claimerHandle,
+    partnerHandle,
+    relationshipKey: pairKey(claimerHandle, partnerHandle),
+    status: "pending",
+    proofUrl,
+    createdAt: new Date().toISOString(),
+  };
+
+  const { error } = await submitClaim(payload);
+  if (error) {
+    showMessage(claimMessage, `Không gửi được claim: ${error.message}`, "error");
+    return;
+  }
+
+  claimForm.reset();
+  showMessage(
+    claimMessage,
+    `Đã tạo claim. Gửi mã ${payload.claimCode} cho người yêu để họ xác nhận.`
+  );
+});
+
+confirmForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const fd = new FormData(confirmForm);
+  const claimCode = (fd.get("claimCode")?.toString() || "").trim().toUpperCase();
+  const partnerHandle = fd.get("partnerHandle")?.toString() || "";
+
+  if (!claimCode || !normalizeHandle(partnerHandle)) {
+    showMessage(confirmMessage, "Thiếu mã claim hoặc handle.", "error");
+    return;
+  }
+
+  const { error } = await confirmClaim(claimCode, partnerHandle);
+  if (error) {
+    showMessage(confirmMessage, `Xác nhận thất bại: ${error.message}`, "error");
     return;
   }
 
@@ -606,55 +542,31 @@ claimConfirmForm.addEventListener("submit", async (e) => {
   }
 });
 
-authForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const data = new FormData(authForm);
+flagForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const fd = new FormData(flagForm);
+  const payload = {
+    id: crypto.randomUUID(),
+    targetHandle: normalizeHandle(fd.get("target")?.toString() || ""),
+    category: fd.get("category")?.toString() || "",
+    detail: fd.get("detail")?.toString().trim() || "",
+    evidenceUrl: fd.get("evidenceUrl")?.toString().trim() || "",
+    createdAt: new Date().toISOString(),
+  };
 
-  const profileUrl = String(data.get("profileUrl")).trim();
-  const normalizedProfileUrl = normalizeProfileUrl(profileUrl);
-  if (!normalizedProfileUrl) {
-    showMessage(authMessage, "Link profile không hợp lệ.", "error");
+  if (!payload.targetHandle || !payload.category || !payload.detail || !payload.evidenceUrl) {
+    showMessage(flagMessage, "Vui lòng nhập đủ thông tin flag.", "error");
     return;
   }
 
-  const report = {
-    platform: String(data.get("platform")),
-    display_name: String(data.get("displayName") || "").trim(),
-    profile_url: profileUrl,
-    normalized_profile_url: normalizedProfileUrl,
-    verdict: String(data.get("verdict")),
-    confidence: Number(data.get("confidence")),
-    reason: String(data.get("reason")).trim(),
-    evidence_url: String(data.get("evidenceUrl")).trim(),
-    upvotes: 0,
-    downvotes: 0,
-  };
-
-  if (supabaseClient) {
-    const { error } = await supabaseClient.from("auth_reports").insert(report);
-    if (error) {
-      if (error.code === "23505") {
-        showMessage(authMessage, "Báo cáo tương tự đã tồn tại. Vui lòng tránh gửi trùng lặp.", "error");
-      } else {
-        showMessage(authMessage, `Gửi auth report thất bại: ${error.message}`, "error");
-      }
-      return;
-    }
-
-    await fetchAuthReports();
-  } else {
-    authReports.push({
-      id: crypto.randomUUID(),
-      ...mapAuthRow({ ...report, created_at: new Date().toISOString() }),
-    });
+  const { error } = await submitFlag(payload);
+  if (error) {
+    showMessage(flagMessage, `Không gửi được flag: ${error.message}`, "error");
+    return;
   }
 
-  authForm.reset();
-  authSearchInput.value = profileUrl;
-  authFilterVerdict.value = "all";
-  renderAuthReports();
-
-  showMessage(authMessage, "Đã gửi báo cáo Auth thành công.");
+  flagForm.reset();
+  showMessage(flagMessage, "Đã gửi flag thành công.");
 });
 
 searchInput.addEventListener("input", renderList);

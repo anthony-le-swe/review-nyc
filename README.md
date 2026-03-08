@@ -1,50 +1,41 @@
-# review-nyc
+# LoveProof (formerly ExCheck)
 
-Ứng dụng web **ExCheck** để cộng đồng chia sẻ review người yêu cũ và check auth FB/Instagram (real/fake).
+LoveProof là web app tập trung vào 2 nhu cầu:
 
-![ExCheck preview](assets/readme-preview.svg)
+1. **Match Checker** cho người dùng app hẹn hò: tra cứu tín hiệu công khai xem một handle có đang trong mối quan hệ verified hoặc có community flags không.
+2. **Couple Verify** cho cặp đôi: xác thực mối quan hệ theo luồng 2 bước có đồng thuận (tạo claim + xác nhận bằng claim code).
 
-## Stack hiện tại
+## Stack
 
 - Frontend: HTML/CSS/JS thuần
-- Database online: **Supabase (PostgreSQL)**
-- Fallback: nếu chưa cấu hình Supabase thì chạy dữ liệu demo local
+- Database online: Supabase (PostgreSQL)
+- Fallback: local demo data nếu chưa cấu hình Supabase
 
-## Tính năng
+## Core flows
 
-- Thêm review mối quan hệ có bằng chứng.
-- Bắt buộc bằng chứng bổ sung nếu review tiêu cực.
-- Tìm kiếm/lọc review theo tên, khu vực, sentiment.
-- Gửi auth-report cho link FB/Instagram (real/fake/chưa rõ).
-- Tra cứu theo link profile + upvote/downvote từng báo cáo.
+### A) Match Checker
+- Nhập handle.
+- Hệ thống hiển thị:
+  - danh sách `relationship_claims` ở trạng thái `verified` có chứa handle đó
+  - danh sách `community_flags` do cộng đồng gửi
 
+### B) Couple Verify
+1. Partner A tạo claim (`pending`) với `claim_code`.
+2. Partner B nhập `claim_code` + handle của mình để xác nhận.
+3. Claim chuyển sang `verified`, có thể được tra cứu trong Match Checker.
 
-## Quy tắc chống trùng auth-report
+## Setup
 
-Để hạn chế spam, hệ thống chặn submit trùng theo từng ngày:
+### 1) Tạo bảng ở Supabase
+Chạy file `supabase/schema.sql` trên SQL Editor.
 
-- Chuẩn hoá `profile_url` thành `normalized_profile_url`.
-- Tạo `reason_hash = md5(reason)` để so khớp nội dung lý do.
-- Không cho tạo thêm report nếu **cùng `normalized_profile_url` + `verdict` + `reason_hash` trong cùng ngày**.
-
-Khi bị trùng, frontend sẽ hiện thông báo thân thiện: **"Báo cáo tương tự đã tồn tại"**.
-
-## Cấu hình Supabase
-
-### 1) Tạo bảng
-
-Chạy SQL trong file `supabase/schema.sql` trên Supabase SQL Editor.
-
-### 2) Cấu hình URL + ANON KEY
-
-Mở file `config.js` và điền:
+### 2) Cấu hình project key
+Điền `config.js`:
 
 ```js
 window.EXCHECK_SUPABASE_URL = "https://<project-ref>.supabase.co";
 window.EXCHECK_SUPABASE_ANON_KEY = "<your-anon-key>";
 ```
-
-> Không commit service_role key vào frontend.
 
 ### 3) Chạy local
 
@@ -53,3 +44,8 @@ python3 -m http.server 4173
 ```
 
 Mở `http://localhost:4173`.
+
+## Lưu ý sản phẩm
+
+- Đây là MVP cộng đồng; cần bổ sung anti-abuse (rate limit, moderation queue, auth) trước production.
+- Không khuyến khích doxxing; bằng chứng nên qua link đã ẩn thông tin nhạy cảm.
